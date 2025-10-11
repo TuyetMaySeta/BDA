@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv
+
+# Environment
+.env
+
+# Data
+data/videos/*
+data/audio/*
+data/temp/*
+!data/videos/.gitkeep
+!data/audio/.gitkeep
+!data/temp/.gitkeep
+
+# Logs
+logs/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
