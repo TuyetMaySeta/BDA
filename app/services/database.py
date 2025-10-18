@@ -55,7 +55,7 @@ def insert_video(video_data: Dict) -> int:
     
     try:
         cursor.execute("""
-            INSERT INTO videos (title, url, channel_name, full_transcript, duration, published_at, summary)
+            INSERT INTO videos (title, url, channel_name, full_transcript, duration, published_at, summary,embedding)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
@@ -65,7 +65,8 @@ def insert_video(video_data: Dict) -> int:
             video_data.get('full_transcript'),
             video_data.get('duration'),
             video_data.get('published_at'),
-            video_data.get('summary')
+            video_data.get('summary'),
+            video_data.get('embedding'),
         ))
         
         video_id = cursor.fetchone()[0]
@@ -91,14 +92,15 @@ def insert_chunks(video_id: int, chunks: List[Dict]):
     try:
         for chunk in chunks:
             cursor.execute("""
-                INSERT INTO transcript_chunks (video_id, chunk_index, start_time, end_time, text)
+                INSERT INTO transcript_chunks (video_id, chunk_index,embedding, start_time, end_time, text)
                 VALUES (%s, %s, %s, %s, %s)
             """, (
                 video_id,
                 chunk.get('chunk_index'),
                 chunk.get('start_time'),
                 chunk.get('end_time'),
-                chunk.get('text')
+                chunk.get('text'),
+                chunk.get('embedding'),
             ))
         
         conn.commit()
@@ -146,6 +148,41 @@ def check_video_exists(url: str) -> Optional[int]:
         cursor.execute("SELECT id FROM videos WHERE url = %s", (url,))
         result = cursor.fetchone()
         return result[0] if result else None
+    finally:
+        cursor.close()
+        conn.close()
+
+def search_similar_chunks(query_embedding: List[float], limit: int = 5) -> List[Dict]:
+    """Tìm kiếm chunks tương tự dựa trên embedding"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT tc.id, tc.video_id, tc.text, tc.start_time, tc.end_time,
+                   v.title, v.url,
+                   1 - (tc.embedding <=> %s::vector) as similarity
+            FROM transcript_chunks tc
+            JOIN videos v ON tc.video_id = v.id
+            WHERE tc.embedding IS NOT NULL
+            ORDER BY tc.embedding <=> %s::vector
+            LIMIT %s
+        """, (query_embedding, query_embedding, limit))
+        
+        results = cursor.fetchall()
+        return [
+            {
+                'chunk_id': r[0],
+                'video_id': r[1],
+                'text': r[2],
+                'start_time': r[3],
+                'end_time': r[4],
+                'video_title': r[5],
+                'video_url': r[6],
+                'similarity': r[7]
+            }
+            for r in results
+        ]
     finally:
         cursor.close()
         conn.close()

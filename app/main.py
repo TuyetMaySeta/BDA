@@ -4,11 +4,12 @@ from typing import Optional
 import logging
 from pathlib import Path
 from datetime import datetime
+from app.services.embedder import generate_embedding, generate_embeddings_batch
 
 from app.config import settings
 from app.services.database import (
     init_db, get_db, insert_video, insert_chunks, 
-    update_video_summary, check_video_exists
+    update_video_summary, check_video_exists,search_similar_chunks
 )
 from app.services.downloader import download_video
 from app.services.transcriber import transcribe_video
@@ -77,7 +78,8 @@ def process_video_pipeline(url: str) -> dict:
     3. Extract metadata & transcribe
     4. Chunk transcript
     5. Generate summary
-    6. Save to database
+    6. Generate embeddings
+    7. Save to database
     """
     try:
         logger.info(f"{'='*60}")
@@ -120,8 +122,24 @@ def process_video_pipeline(url: str) -> dict:
         summary = summarize_text(transcript_data['full_transcript'])
         logger.info(f"✅ Summary generated: {len(summary)} characters")
         
-        # Step 6: Save to database
-        logger.info("💾 Step 5: Saving to database...")
+        # Step 6: Generate embeddings
+        logger.info("🔢 Step 5: Generating embeddings...")
+        
+        # Embedding cho summary
+        summary_embedding = generate_embedding(summary)
+        
+        # Embedding cho chunks (batch)
+        chunk_texts = [chunk['text'] for chunk in chunks]
+        chunk_embeddings = generate_embeddings_batch(chunk_texts)
+        
+        # Gán embeddings vào chunks
+        for i, chunk in enumerate(chunks):
+            chunk['embedding'] = chunk_embeddings[i]
+        
+        logger.info(f"✅ Generated embeddings for summary and {len(chunks)} chunks")
+        
+        # Step 7: Save to database
+        logger.info("💾 Step 6: Saving to database...")
         
         # Convert published_at from YYYYMMDD to datetime
         published_at = None
@@ -140,7 +158,8 @@ def process_video_pipeline(url: str) -> dict:
             'full_transcript': transcript_data['full_transcript'],
             'duration': video_info['duration'],
             'published_at': published_at,
-            'summary': summary
+            'summary': summary,
+            'embedding': summary_embedding,
         }
         
         video_id = insert_video(video_data)
@@ -164,6 +183,10 @@ def process_video_pipeline(url: str) -> dict:
                 'summary_length': len(summary)
             }
         }
+        
+    except Exception as e:
+        logger.error(f"❌ Pipeline error: {e}", exc_info=True)
+        raise
         
     except Exception as e:
         logger.error(f"❌ Pipeline error: {e}", exc_info=True)
@@ -269,6 +292,30 @@ async def get_video_chunks(video_id: int):
     finally:
         cursor.close()
         db.close()
+
+@app.post("/api/search")
+async def semantic_search(query: str, limit: int = 5):
+    """Tìm kiếm semantic dựa trên embedding"""
+    try:
+        from app.services.embedder import generate_embedding
+        
+        # Generate embedding cho query
+        query_embedding = generate_embedding(query)
+        
+        if not query_embedding:
+            raise HTTPException(status_code=400, detail="Cannot generate embedding")
+        
+        # Search
+        results = search_similar_chunks(query_embedding, limit)
+        
+        return {
+            "query": query,
+            "total_results": len(results),
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/videos")

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional,List
 
 @dataclass
 class TranscriptChunk:
@@ -8,6 +8,7 @@ class TranscriptChunk:
     id: Optional[int] = None
     video_id: int = 0
     chunk_index: int = 0
+    embedding: Optional[List[float]] = None
     start_time: float = 0.0
     end_time: float = 0.0
     text: str = ""

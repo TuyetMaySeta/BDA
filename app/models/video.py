@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 @dataclass
 class Video:
@@ -13,6 +13,7 @@ class Video:
     duration: Optional[int] = None
     published_at: Optional[datetime] = None
     summary: Optional[str] = None
+    embedding: Optional[List[float]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     

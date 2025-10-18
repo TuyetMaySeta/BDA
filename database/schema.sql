@@ -1,4 +1,6 @@
 -- Bảng videos
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS videos (
     id SERIAL PRIMARY KEY,
     title VARCHAR(500) NOT NULL,
@@ -8,6 +10,7 @@ CREATE TABLE IF NOT EXISTS videos (
     duration INTEGER,
     published_at TIMESTAMP,
     summary TEXT,
+    embedding VECTOR (1536),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -15,19 +18,28 @@ CREATE TABLE IF NOT EXISTS videos (
 -- Bảng transcript_chunks
 CREATE TABLE IF NOT EXISTS transcript_chunks (
     id SERIAL PRIMARY KEY,
-    video_id INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    video_id INTEGER NOT NULL REFERENCES videos (id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     start_time FLOAT,
     end_time FLOAT,
     text TEXT NOT NULL,
+    embedding VECTOR (1536),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Indexes
-CREATE INDEX idx_video_id ON transcript_chunks(video_id);
-CREATE INDEX idx_chunk_index ON transcript_chunks(video_id, chunk_index);
-CREATE INDEX idx_video_url ON videos(url);
+CREATE INDEX idx_video_id ON transcript_chunks (video_id);
+
+CREATE INDEX idx_chunk_index ON transcript_chunks (video_id, chunk_index);
+
+CREATE INDEX idx_video_url ON videos (url);
+
+CREATE INDEX ON videos USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+CREATE INDEX ON transcript_chunks USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
 
 -- Trigger tự động update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
