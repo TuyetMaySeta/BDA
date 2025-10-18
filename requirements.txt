@@ -11,14 +11,14 @@ yt-dlp==2023.11.16
 moviepy==1.0.3
 
 # AI/ML
-openai==1.3.5
+openai==1.54.3
 openai-whisper==20231117
-# hoặc dùng AssemblyAI, Google Speech-to-Text
 
 # Utils
 python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
+httpx==0.27.0
 
 # Optional
 requests==2.31.0

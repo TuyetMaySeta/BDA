@@ -45,7 +45,7 @@ class VideoResponse(BaseModel):
 async def startup_event():
     """Khởi tạo database khi start app"""
     try:
-        init_db()
+        #init_db()
         logger.info("✅ Application started successfully")
     except Exception as e:
         logger.error(f"❌ Failed to start application: {e}")

@@ -3,10 +3,9 @@ import logging
 from pathlib import Path
 from typing import Dict
 from moviepy.editor import VideoFileClip
-
+ 
 logger = logging.getLogger(__name__)
 
-# Load model một lần duy nhất (tránh load lại nhiều lần)
 _whisper_model = None
 
 def get_whisper_model(model_size: str = "base"):

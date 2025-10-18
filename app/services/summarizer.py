@@ -1,11 +1,14 @@
 import logging
-from openai import OpenAI
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Khởi tạo OpenAI client
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# LAZY LOADING - Chỉ khởi tạo khi cần dùng
+def get_openai_client():
+    """Lazy load OpenAI client"""
+    from openai import OpenAI
+    return OpenAI(api_key=settings.OPENAI_API_KEY)
+
 
 def summarize_text(text: str, max_length: int = 500) -> str:
     """
@@ -29,10 +32,13 @@ def summarize_text(text: str, max_length: int = 500) -> str:
         
         logger.info("🤖 Generating summary with OpenAI...")
         
+        # Lazy load client
+        client = get_openai_client()
+        
         prompt = f"""Hãy tóm tắt nội dung video sau đây bằng tiếng Việt một cách ngắn gọn và súc tích (khoảng {max_length} từ):
 
 Nội dung:
-{text[:4000]}  # Giới hạn để không vượt quá token limit
+{text[:4000]}
 
 Yêu cầu:
 - Tóm tắt các ý chính
@@ -41,7 +47,7 @@ Yêu cầu:
 """
         
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # hoặc "gpt-4" nếu có budget
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Bạn là trợ lý AI chuyên tóm tắt nội dung video."},
                 {"role": "user", "content": prompt}
@@ -77,6 +83,9 @@ def extract_keywords(text: str, max_keywords: int = 10) -> list:
             return []
         
         logger.info("🤖 Extracting keywords with OpenAI...")
+        
+        # Lazy load client
+        client = get_openai_client()
         
         prompt = f"""Trích xuất {max_keywords} từ khóa quan trọng nhất từ nội dung sau, trả về dạng danh sách phân cách bằng dấu phẩy:
 
